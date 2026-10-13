@@ -1,6 +1,6 @@
 ﻿SAMURAI WARRIORS 2 (PC) - CONTROLLER MOD
 ========================================
-Version 1.0 - (Français plus bas)
+Version 1.0.1 - (Français plus bas)
 
 Play Samurai Warriors 2 with an Xbox or PlayStation controller, the way the
 console versions play in the West:

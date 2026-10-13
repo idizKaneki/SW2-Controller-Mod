@@ -6,7 +6,7 @@ https://www.nexusmods.com/samuraiwarriors2/mods/8
 Western console button layout, right stick camera, A/Cross confirms in menus,
 and controller button icons instead of keyboard keys. No game file is included.
 
-## What is in the release zip (SW2_Controller_v1.0.zip)
+## What is in the release zip (SW2_Controller_v1.0.1.zip)
 
 | File in the zip | Source |
 |---|---|
@@ -40,13 +40,16 @@ The Python scripts only:
 ## Build
 
 ### SW2Controller.asi
-Needs LLVM (clang, lld-link, llvm-dlltool). No Visual Studio, no Windows SDK, no C runtime.
+32-bit Windows DLL (renamed .asi), built with the standard MinGW C runtime and a version resource (`version.rc`).
+Needs [Zig](https://ziglang.org) (tested, `zig cc`) or MinGW-w64 32-bit (e.g. MSYS2 "MINGW32" shell).
 
     cd src
-    ./build.sh        (Linux / macOS)
     build.bat         (Windows)
+    ./build.sh        (Linux / macOS)
 
-The output is identical to the released file except for the PE timestamp (2 bytes).
+Zig command used for the release:
+
+    zig cc -target x86-windows-gnu -O2 -s -shared -o SW2Controller.asi sw2controller.c version.rc -lkernel32 -Wl,--subsystem,windows
 
 ### Icon patches
 Needs Python 3 + Pillow 12 + numpy, and the game's icon sheet (BNS entry 43, extracted from
@@ -56,10 +59,14 @@ your own copy of the game; not included):
 
 ### Release zip
 
-    python build_tools/creer_mod_controller.py python-3.x.y-embed-amd64.zip dinput8.dll --version 1.0
+    python build_tools/creer_mod_controller.py python-3.x.y-embed-amd64.zip dinput8.dll --version 1.0.1
 
 (expects `INSTALL.bat`, `UNINSTALL.bat`, `readme.txt`, `files/` and `tools/` next to it: copy the
 contents of `package/` and the built `SW2Controller.asi` into `files/` first).
+
+## Changelog
+- 1.0.1: same features; the module is now built with the standard C runtime and carries version information (fewer antivirus false positives).
+- 1.0: first release.
 
 ## License
 MIT for this repository (see LICENSE). Samurai Warriors 2 (c) Koei Tecmo / Omega Force.

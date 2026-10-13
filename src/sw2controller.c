@@ -10,30 +10,14 @@
  * - MenuConfirmA: in menus the game turns "Musou" into CONFIRM and "Jump" into CANCEL.
  *   These two entries are swapped: Jump (A) confirms, Musou (B) cancels. Battles are unchanged.
  */
-typedef unsigned char u8; typedef unsigned int u32; typedef void *HANDLE;
-#define WINAPI __stdcall
-__declspec(dllimport) HANDLE WINAPI CreateThread(void*, u32, u32 (WINAPI*)(void*), void*, u32, u32*);
-__declspec(dllimport) void WINAPI Sleep(u32);
-__declspec(dllimport) int WINAPI VirtualProtect(void*, u32, u32, u32*);
-__declspec(dllimport) HANDLE WINAPI GetModuleHandleA(const char*);
-__declspec(dllimport) u32 WINAPI GetModuleFileNameA(HANDLE, char*, u32);
-__declspec(dllimport) u32 WINAPI GetPrivateProfileIntA(const char*, const char*, int, const char*);
-__declspec(dllimport) u32 WINAPI GetPrivateProfileStringA(const char*, const char*, const char*, char*, u32, const char*);
-__declspec(dllimport) HANDLE WINAPI CreateFileA(const char*, u32, u32, void*, u32, u32, HANDLE);
-__declspec(dllimport) int WINAPI WriteFile(HANDLE, const void*, u32, u32*, void*);
-__declspec(dllimport) int WINAPI CloseHandle(HANDLE);
-__declspec(dllimport) int WINAPI FlushInstructionCache(HANDLE, const void*, u32);
-__declspec(dllimport) HANDLE WINAPI GetCurrentProcess(void);
-__declspec(dllimport) int WINAPI SetThreadPriority(HANDLE, int);
-__declspec(dllimport) HANDLE WINAPI GetCurrentThread(void);
-__declspec(dllimport) u32 WINAPI GetTickCount(void);
-
-int _fltused = 0;
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+typedef unsigned char u8; typedef unsigned int u32;
 static char g_ini[260], g_logp[260];
 static char g_log[2048]; static int g_loglen;
 
 static void flushlog(void) {
-    u32 w; HANDLE h = CreateFileA(g_logp, 0x40000000, 1, 0, 2, 0x80, 0);
+    DWORD w; HANDLE h = CreateFileA(g_logp, 0x40000000, 1, 0, 2, 0x80, 0);
     if (h != (HANDLE)-1) { WriteFile(h, g_log, g_loglen, &w, 0); CloseHandle(h); }
 }
 static void lg(const char *s) { while (*s && g_loglen < (int)sizeof g_log - 1) g_log[g_loglen++] = *s++; }
@@ -51,7 +35,7 @@ static u8 *find(u8 *p, u32 n, const short *pat, int m) {
 }
 static int same(const u8 *p, const short *pat, int m) { int j; for (j = 0; j < m; j++) if (pat[j] != 0x100 && p[j] != (u8)pat[j]) return 0; return 1; }
 static void put(u8 *dst, const u8 *src, int n) {
-    u32 old; int i;
+    DWORD old; int i;
     VirtualProtect(dst, n, 0x40, &old);
     for (i = 0; i < n; i++) dst[i] = src[i];
     VirtualProtect(dst, n, old, &old);
@@ -89,7 +73,7 @@ static void icons(u8 *base) {
         u8 *p = base + *(u32*)(sec + 12), *e = p + *(u32*)(sec + 8);
         if (sec[0] != '.' || (sec[1] != 'r' && sec[1] != 'd')) continue;   /* .rdata / .data */
         for (; p + 4 < e; p++) {
-            u32 old, len, i;
+            DWORD old; u32 len, i;
             if (p[0] != 0xF0 || p[2] != 0xF0) continue;
             if (pass == 0 && !(p[1] == 'J' && p[3] == 'K')) continue;
             if (pass == 1 && !(p[1] == 'O' && p[3] == 'P')) continue;
@@ -109,7 +93,7 @@ static void icons(u8 *base) {
     else { lg("Icons: rotate prompt -> right stick in "); lgn(nr); lg(" text(s), F12 prompt -> text in "); lgn(nf); lg("\r\n"); }
 }
 
-static u32 WINAPI worker(void *arg) {
+static DWORD WINAPI worker(LPVOID arg) {
     u8 *base = (u8*)GetModuleHandleA(0);
     u32 pe = *(u32*)(base + 0x3C);
     u8 *sec = base + pe + 24 + *(unsigned short*)(base + pe + 20);
@@ -124,7 +108,7 @@ static u32 WINAPI worker(void *arg) {
     u8 *pax = 0, *psw = 0; u32 t0 = GetTickCount(), it = 0;
     kau_ok = text <= kau && kau + 24 <= text + tsz;
     (void)arg;
-    lg("SW2Controller 1.2\r\n");
+    lg("SW2Controller 1.0.1\r\n");
     icons(base);
     SetThreadPriority(GetCurrentThread(), 15);
     for (;;) {
@@ -168,9 +152,10 @@ static u32 WINAPI worker(void *arg) {
     return 0;
 }
 
-int WINAPI DllMain(HANDLE inst, u32 reason, void *res) {
+BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID res) {
     (void)res;
-    if (reason == 1) {
+    if (reason == DLL_PROCESS_ATTACH) {
+        DisableThreadLibraryCalls(inst);
         int i, n, k;
         const char *a = "SW2Controller.ini", *b = "SW2Controller.log";
         n = (int)GetModuleFileNameA(inst, g_ini, 240);
